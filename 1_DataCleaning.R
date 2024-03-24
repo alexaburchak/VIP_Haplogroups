@@ -1,13 +1,15 @@
+# Load necessary packages 
+#install.packages("dplyr")
 library(dplyr)
 
 # Load VIP datasets 
-vips_mtDNA <- read.csv("~/Desktop/vipsMtDNA.csv")
+vips_mtDNA <- read.csv("~/VIP_Haplogroups/Raw_Data/vipsMtDNA.csv")
 colnames(vips_mtDNA)[2] <- "mtDNA.haplogroup" 
-vips_yDNA <- read.csv("~/Desktop/vipsYDNA.csv")[, -c(4, 5)]
+vips_yDNA <- read.csv("~/VIP_Haplogroups/Raw_Data/vipsYDNA.csv")[, -c(4, 5)]
 colnames(vips_yDNA)[2] <- "Y.haplogroup"
 
 # Load AADR dataset 
-AADR <- read.csv("~/Desktop/AADR_Annotation.csv")[, -c(1,4,5,6,7,8,10,11,12,18,19,20,
+AADR <- read.csv("~/VIP_Haplogroups/Raw_Data/AADR_Annotation.csv")[, -c(1,4,5,6,7,8,10,11,12,18,19,20,
                                                        21,22,23,24,25,26,28,30,31,32,
                                                        33,34,35,36)]
 
@@ -40,15 +42,14 @@ colnames(AADR_mtDNA)[9] <- "haplogroup"
 colnames(AADR_yDNA)[9] <- "haplogroup"
 
 # Load Parent-Leaf Pairs 
-mtPhylo <- read.csv("~/Desktop/mt_phyloTree.csv", quote = "")
+mtPhylo <- read.csv("~/VIP_Haplogroups/Raw_Data/mt_phyloTree.csv", quote = "")
 colnames(mtPhylo)[1] <- "haplogroup"
 colnames(mtPhylo)[2] <- "Parent"
-yPhylo <- read.csv("~/Desktop/y_phyloTree.csv")
+yPhylo <- read.csv("~/VIP_Haplogroups/Raw_Data/y_phyloTree.csv")
 colnames(yPhylo)[1] <- "haplogroup" # needs to be named haplogroup for now for the left_join
 colnames(yPhylo)[2] <- "Parent"
 
 # Remove vips whose haplogroup was not found in the y tree
-# IF I HAVE TIME: I can add them back in by determining their branch manually
 merged_y_tree <- left_join(vips_yDNA, yPhylo, by = "haplogroup")
 vips_yDNA <- merged_y_tree %>%
   filter(Parent != "NA") %>%
@@ -59,3 +60,4 @@ vips_yDNA <- merged_y_tree %>%
 # only way the program will recognize these values as branches to build a tree 
 colnames(mtPhylo)[1] <- "Child"
 colnames(yPhylo)[1] <- "Child"
+

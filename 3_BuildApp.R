@@ -1,7 +1,21 @@
+# Load necessary packages 
+#install.packages("shiny")
 library(shiny)
+#install.packages("leaflet")
 library(leaflet)
+#install.packages("data.tree")
 library(data.tree)
+#install.packages("getwiki")
 library(getwiki)
+#install.packages("ggtree")
+library(ggtree)
+#install.packages("ggplot2")
+library(ggplot2)
+#install.packages("ape")
+library(ape)
+
+# Load necessary input files 
+
 
 # Define a list of vips a user can compare their haplogroup to (mtDNA vs y)
 mt_famous_options <- vips_mtDNA$Individual
@@ -9,34 +23,97 @@ y_famous_options <- vips_yDNA$Individual
 
 # Define UI
 ui <- fluidPage(
-  titlePanel("DNA Common Ancestor Finder"),
-  sidebarLayout(
-    sidebarPanel(
-      selectInput("haplogroup_type", "Select haplogroup type:",
-                  choices = c("(Select)", "mtDNA", "yDNA")),
-      uiOutput("haplogroup_selector"), 
-      textInput("user_haplogroup", "Enter your haplogroup (ISOGG format):", placeholder = "Type your haplogroup here"),
-      actionButton("find_ancestor", "Find Common Ancestor")
-    ),
-    mainPanel(
-      tabsetPanel(
-        tabPanel("Results", htmlOutput("ancestor_info")),
-        tabPanel("Map", leafletOutput("map")),
-        tabPanel("Biography", htmlOutput("famous_biography"))
+  tags$head(
+    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap")
+  ),
+  tags$style(
+    HTML("
+      body {
+        background-color: #f0f7fc;
+        font-family: 'Roboto', sans-serif;
+      }
+      .container {
+        background-color: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin: 20px;
+      }
+      .intro-text {
+        font-size: 20px;
+        color: #333;
+        margin-bottom: 20px;
+      }
+      .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: #fff;
+        font-weight: bold;
+      }
+      .btn-primary:hover {
+        background-color: #0056b3;
+        border-color: #0056b3;
+      }
+      .panel-title {
+        font-family: 'Roboto', sans-serif; /* Change font of panel title to Roboto */
+        font-size: 24px;
+        font-weight: bold;
+        color: #007bff;
+        margin-bottom: 20px;
+      }
+      .tree-plot-container {
+        background-color: #ffffff;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        max-width: 100%; /* Set maximum width to ensure the plot doesn't exceed the container */
+        overflow-x: auto; /* Add horizontal scroll if necessary */
+      }
+    ")
+  ),
+  titlePanel("Welcome to NobleRoots!"),
+  div(class = "container",
+      sidebarLayout(
+        sidebarPanel(
+          selectInput("haplogroup_type", "Select haplogroup type:",
+                      choices = c("(Select)", "mtDNA", "yDNA")),
+          uiOutput("haplogroup_selector"), 
+          textInput("user_haplogroup", "Enter your haplogroup (ISOGG format):", placeholder = "Type your haplogroup here"),
+          actionButton("find_ancestor", "Find Common Ancestor", class = "btn-primary")
+        ),
+        mainPanel(
+          tabsetPanel(
+            tabPanel("Results", 
+                     uiOutput("ancestor_info"),
+                     div(id = "tree_plot_container", class = "tree-plot-container", imageOutput("tree_plot", width = "100%"))
+            ),
+            tabPanel("Map", leafletOutput("map")),
+            tabPanel("Biography", htmlOutput("famous_biography"))
+          )
+        )
       )
-    )
   )
 )
 
+# Define server logic
 server <- function(input, output, session) {
   # Define reactive expression for dynamically updating haplogroup selector
   output$haplogroup_selector <- renderUI({
     if (input$haplogroup_type == "mtDNA") {
-      selectInput("vip", "Select a VIP:",
-                  choices = c("(Select)", mt_famous_options))
+      selectizeInput("vip", "Select a VIP:",
+                     choices = c("(Select)", mt_famous_options),
+                     options = list(
+                       placeholder = "Start typing to search...",
+                       onInitialize = I("function() { this.setValue(''); }")
+                     ))
     } else if (input$haplogroup_type == "yDNA") {
-      selectInput("vip", "Select a VIP:",
-                  choices = c("(Select)", y_famous_options)) 
+      selectizeInput("vip", "Select a VIP:",
+                     choices = c("(Select)", y_famous_options),
+                     options = list(
+                       placeholder = "Start typing to search...",
+                       onInitialize = I("function() { this.setValue(''); }")
+                     )) 
     }
   })
   
@@ -56,10 +133,25 @@ server <- function(input, output, session) {
       if (is.null(famous_info)) {
         return(NULL)
       } else {
-        HTML(paste("<h3>", famous_info, "</h3>"))
+        HTML(paste("<h3>", famous_info, "</h3>",
+                   "<p>Source: Wikipedia</p>"))
       }
     })
+    # Render tree plot
+    output$tree_plot <- renderImage({
+      tree_plot <- common_ancestor$tree_plot
+      outfile <- tempfile(fileext = '.png')
+      ggsave(outfile, tree_plot, width = 10, height = 6, units = "in")
+      list(
+        src = outfile,
+        contentType = 'image/png',
+        width = '100%',  # Make the width responsive
+        height = 'auto',
+        alt = "Tree Plot"
+      )
+    }, deleteFile = TRUE)
   })
+  
   
   # Render map
   output$map <- renderLeaflet({
@@ -83,11 +175,24 @@ server <- function(input, output, session) {
     if (is.null(common_ancestor_details$details)) {
       return(NULL)
     }
+    
+    # Determine if the date is BCE or CE
+    if (common_ancestor_details$details$date < 0) {
+      date_text <- paste(abs(common_ancestor_details$details$date), "BCE", sep = " ")
+    } else {
+      date_text <- paste(common_ancestor_details$details$date, "CE", sep = " ")
+    }
+    
     # Render HTML with common ancestor information and additional details
-    HTML(paste("<h3>", common_ancestor_details$details$name, "</h3>",
-               "<p>Country of Origin: ", common_ancestor_details$details$country_of_origin,
-               "</p>", "<p>Date: ", common_ancestor_details$details$date,
-               "</p>"))
+    HTML(paste("<p style='font-size: x-large;'>You and ", input$vip, 
+               " share a common ancestor <strong>", 
+               common_ancestor_details$details$name, "</strong>. 
+               This ancestral connection dates back to <strong>", 
+               date_text, "</strong> <span style='font-weight: normal;'>and 
+               originates in</span> <strong>", 
+               common_ancestor_details$details$country_of_origin, 
+               "</strong>.</p>", sep = ""))
+    
   })
 }
 
@@ -118,14 +223,12 @@ find_common_ancestor <- function(user_hap, vip, haplogroup_type) {
   
   # compare paths to find common ancestral haplogroup 
   ancestor_haplogroup <- intersect(vip_path, user_path)[length(intersect(vip_path, user_path))]
-  #print(paste("The ancestral haplogroup shared between you and", vip, "is:", ancestor_haplogroup))
   
   # Find all samples in the AADR set with the ancestral haplogroup
   all_ancestors <- subset(AADR_set, haplogroup == ancestor_haplogroup)
   
   # Determine the most ancient ancestor from all_ancestors 
   ancient_ancestor <- all_ancestors[which.min(all_ancestors$Date), ]
-  #print(paste("The most ancient shared ancestor between you and", vip, "is:", ancient_ancestor[2]))
   
   # extract information from AADR table 
   country_of_origin <- ancient_ancestor$Origin
@@ -133,6 +236,33 @@ find_common_ancestor <- function(user_hap, vip, haplogroup_type) {
   latitude <- ancient_ancestor$Lat.
   date <- ancient_ancestor$Date 
   name <- ancient_ancestor$Master.ID
+  
+  # Build a phylogenetic tree 
+  # Define the tree structure
+  tree_data <- data.frame(
+    parent = c("Root", "Root"),
+    child = c("A", "B"),
+    stringsAsFactors = FALSE
+  )
+  
+  # Create a tree object
+  tree <- as.phylo(tree_data)
+  
+  # Plot the tree with the root at the top and without the scale
+  tree_plot<- tree_plot <- ggtree(tree, layout = "dendrogram") +
+    geom_label(aes(x=-1.2, y=1.5, label=ancient_ancestor$Master.ID), size = 8, fontface = "bold") +
+    geom_segment(aes(x = -1, y = 1.5, xend = -1.15, yend = 1.5), color = "red", size = 1.5) + # Line leading to ancestral haplogroup 
+    geom_segment(aes(x = -1, y = 1.5, xend = -1, yend = 2), color = "red", size = 1.5) + # Line connecting ancestral haplogroup to vip
+    geom_segment(aes(x = -1, y = 2, xend = 0, yend = 2), color = "red", size = 1.5) + # Line leading to vip
+    geom_label(aes(x=0 , y=1, label="You"), size = 8, fontface = "bold") +
+    geom_label(aes(x=0 , y=2, label=vip), size = 8, color = "red", fontface = "bold") +
+    theme_tree2() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position = "none")
   
   # Return relevant information including ancient ancestor
   return(list(
@@ -142,7 +272,8 @@ find_common_ancestor <- function(user_hap, vip, haplogroup_type) {
     longitude = longitude,
     latitude = latitude,
     date = date,
-    name = name
+    name = name,
+    tree_plot = tree_plot  # Pass the tree plot to the output
   ))
 }
 
