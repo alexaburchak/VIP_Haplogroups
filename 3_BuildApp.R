@@ -14,9 +14,6 @@ library(ggplot2) # Version 3.5.0
 #install.packages("ape")
 library(ape) # Version 5.7-1
 
-# Load necessary input files 
-
-
 # Define a list of vips a user can compare their haplogroup to (mtDNA vs y)
 mt_famous_options <- vips_mtDNA$Individual
 y_famous_options <- vips_yDNA$Individual
@@ -72,9 +69,12 @@ ui <- fluidPage(
       }
     ")
   ),
+  # Define the title panel with a welcome message
   titlePanel("Welcome to NobleRoots!"),
+  # Define a container with a sidebar layout
   div(class = "container",
       sidebarLayout(
+        # Define the sidebar panel containing input controls
         sidebarPanel(
           selectInput("haplogroup_type", "Select haplogroup type:",
                       choices = c("(Select)", "mtDNA", "yDNA")),
@@ -82,13 +82,17 @@ ui <- fluidPage(
           textInput("user_haplogroup", "Enter your haplogroup (ISOGG format):", placeholder = "Type your haplogroup here"),
           actionButton("find_ancestor", "Find Common Ancestor", class = "btn-primary")
         ),
+        # Define the main panel containing tabbed content
         mainPanel(
           tabsetPanel(
+            # First tab for displaying results
             tabPanel("Results", 
                      uiOutput("ancestor_info"),
                      div(id = "tree_plot_container", class = "tree-plot-container", imageOutput("tree_plot", width = "100%"))
             ),
+            # Second tab for displaying a map
             tabPanel("Map", leafletOutput("map")),
+            # Third tab for displaying biographies
             tabPanel("Biography", htmlOutput("famous_biography"))
           )
         )
