@@ -1,18 +1,18 @@
 # Load necessary packages 
 #install.packages("shiny")
-library(shiny)
+library(shiny) # Version 1.8.0
 #install.packages("leaflet")
-library(leaflet)
+library(leaflet) # Version 2.2.1
 #install.packages("data.tree")
-library(data.tree)
+library(data.tree) # Version 1.1.0
 #install.packages("getwiki")
-library(getwiki)
+library(getwiki) # Version 0.9.0
 #install.packages("ggtree")
-library(ggtree)
+library(ggtree) # Version 3.10.0
 #install.packages("ggplot2")
-library(ggplot2)
+library(ggplot2) # Version 3.5.0
 #install.packages("ape")
-library(ape)
+library(ape) # Version 5.7-1
 
 # Load necessary input files 
 

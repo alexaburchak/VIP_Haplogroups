@@ -1,6 +1,6 @@
 # Load necessary packages 
 #install.packages("dplyr")
-library(dplyr)
+library(dplyr) # Version 1.1.4
 
 # Load VIP datasets 
 vips_mtDNA <- read.csv("~/VIP_Haplogroups/Raw_Data/vipsMtDNA.csv")
